@@ -9,9 +9,10 @@ simpleBuild {
     machine = "hi-speed"
     docker = "java:1.9"
 
-    env = [
+    map = [
         FOO : 42,
         BAR : "YASS"
+        url : "http://host/path/${PARAM}/${env.BUILD_NUMBER}/tail"
     ]
 
     git_repo = "https://github.com/cloudbeers/PR-demo"
@@ -34,9 +35,42 @@ simpleBuild {
 // method with the same name as the file.
 def call(body) {
     def config = [:]
+
+    echo("call this: "+this.getClass().getName())
+    if (this instanceof Closure) {
+        echo("call owner: "+owner.getClass().getName())
+        echo("call delegate: "+delegate.getClass().getName())
+    }
+
+    // Alternative 1
+    // When using Alternative 1, comment out Alternative 2 below
+    // This alternative results in java.lang.NullPointerException: Cannot get property 'BUILD_NUMBER' on null object
     body.resolveStrategy = Closure.DELEGATE_FIRST
     body.delegate = config
+    echo("body this: "+body.getClass().getName())
+    if (body instanceof Closure) {
+        echo("body owner: "+body.owner.getClass().getName())
+        echo("body delegate: "+body.delegate.getClass().getName())
+    }
+    echo("Start: body()")
     body()
+    echo("Done: body()")
+
+/*
+    // Alternative 2
+    // When using Alternative 2, comment out Alternative 1 above
+    // This alternative results in groovy.lang.MissingPropertyException: No such property: scm for class: groovy.lang.Binding
+    def code = body.rehydrate(config, body.getOwner(), this)
+    code.resolveStrategy = Closure.DELEGATE_FIRST
+    echo("code this: "+code.getClass().getName())
+    if (code instanceof Closure) {
+        echo("code owner: "+code.owner.getClass().getName())
+        echo("code delegate: "+code.delegate.getClass().getName())
+    }
+    echo("Start: code()")
+    code()
+    echo("Done: code()")
+*/
 
     /** Run the build scripts */
 
@@ -97,7 +131,7 @@ def runViaDocker(config) {
 /** Run the before/script combination */
 def runScripts(config) {
     envList = []
-    for ( e in config.env ) {
+    for ( e in config.map) {
         envList.add("${e.getKey()}=${e.getValue()}")
     }
     withEnv(envList) {
