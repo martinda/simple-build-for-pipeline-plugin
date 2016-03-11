@@ -1,5 +1,7 @@
 package org.jenkinsci.plugins.simplebuild;
 
+import hudson.model.ParametersDefinitionProperty;
+import hudson.model.StringParameterDefinition;
 import org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -45,4 +47,25 @@ public class SimpleBuildDSLTest {
         });
     }
 
+    @Test public void envAndBuildParamResolution() throws Exception {
+
+        sampleRepo.init();
+        sampleRepo.write("Jenkinsfile", "simpleBuild {  map=[a:'b'] \n gitRepo = \"https://github.com/cloudbeers/PR-demo\" \n //map = [var: env.BUILD_NUMBER, param: PARAM] \n }");
+        sampleRepo.git("add", "Jenkinsfile");
+        sampleRepo.git("commit", "--message=files");
+        story.addStep(new Statement() {
+            @Override public void evaluate() throws Throwable {
+                WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+                p.addProperty(new ParametersDefinitionProperty(
+                    new StringParameterDefinition("PARAM","value")
+                ));
+                p.setDefinition(new CpsScmFlowDefinition(new GitStep(sampleRepo.toString()).createSCM(), "Jenkinsfile"));
+                WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+                story.j.assertLogContains("Finished: SUCCESS",
+                        story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b)));
+
+
+            }
+        });
+    }
 }

@@ -9,9 +9,11 @@ simpleBuild {
     machine = "hi-speed"
     docker = "java:1.9"
 
-    env = [
+    map = [
         FOO : 42,
         BAR : "YASS"
+        b : env.BUILD_NUMBER
+        p : BUILD_PARAM
     ]
 
     git_repo = "https://github.com/cloudbeers/PR-demo"
@@ -29,32 +31,54 @@ simpleBuild {
 
 */
 
+import org.jenkinsci.plugins.simplebuild.SimpleBuild;
 
 // The call(body) method in any file in workflowLibs.git/vars is exposed as a
 // method with the same name as the file.
 def call(body) {
-    def config = [:]
+    def config = new org.jenkinsci.plugins.simplebuild.SimpleBuild()
+    //def code = body.rehydrate(config, body.getOwner(), this)
+    //code.resolveStrategy = Closure.DELEGATE_FIRST
+    //System.out.println("System code()")
+    //echo("code()")
+    //code()
+    System.out.println("System body()")
+    echo("body()")
     body.resolveStrategy = Closure.DELEGATE_FIRST
     body.delegate = config
     body()
 
+    //body.resolveStrategy = Closure.DELEGATE_FIRST
+    //body.delegate = config
+    //echo(body.getOwner().getClass().getName())
+    //echo(body.getOwner().env)
+    //body()
+    
+    //echo(body.getClass().getName())
+    //echo(code.gitRepo)
+    //echo(code.map)
+    echo(body.gitRepo)
+    echo(body.map)
+    echo(config.gitRepo)
+    echo(config.map)
+
     /** Run the build scripts */
 
     try {
-        if (config.docker_image != null) {
-            runViaDocker(config)
+        if (body.docker_image != null) {
+            runViaDocker(body)
         } else {
-            runViaLabel(config)
+            runViaLabel(body)
         }
     } catch (Exception rethrow) {
         failureDetail = failureDetail(rethrow)
-        sendMail(config, "FAILURE: Pipeline '${env.JOB_NAME}' (${env.BUILD_NUMBER}) failed!",
+        sendMail(body, "FAILURE: Pipeline '${env.JOB_NAME}' (${env.BUILD_NUMBER}) failed!",
                 "Your job failed, please review it ${env.BUILD_URL}.\n\n${failureDetail}")
         throw rethrow
     }
 
     /** conditionally notify - maybe wih a catch */
-    sendMail(config, "Pipeline '${env.JOB_NAME}' (${env.BUILD_NUMBER}) succeeded.",
+    sendMail(body, "Pipeline '${env.JOB_NAME}' (${env.BUILD_NUMBER}) succeeded.",
             "Be happy. Pipeline '${env.JOB_NAME}' (${env.BUILD_NUMBER}) succeeded.")
 
 
@@ -97,11 +121,12 @@ def runViaDocker(config) {
 /** Run the before/script combination */
 def runScripts(config) {
     envList = []
-    for ( e in config.env ) {
+    for ( e in config.map) {
         envList.add("${e.getKey()}=${e.getValue()}")
     }
     withEnv(envList) {
-
+        echo(this.getClass().getName())
+        echo(config.git_repo)
         /* checkout the codes */
         if (config.git_repo == null) {
             checkout scm

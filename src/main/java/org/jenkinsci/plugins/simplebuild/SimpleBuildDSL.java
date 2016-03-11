@@ -42,6 +42,13 @@ public class SimpleBuildDSL extends PipelineDSLGlobal {
     public static class MiscWhitelist extends ProxyWhitelist {
         public MiscWhitelist() throws IOException {
             super(new StaticWhitelist(
+                    "staticField java.lang.System out",
+                    "method java.io.PrintStream println java.lang.String",
+                    "method groovy.lang.Closure getOwner",
+                    "new org.jenkinsci.plugins.simplebuild.SimpleBuild",
+                    "method groovy.lang.Closure rehydrate java.lang.Object java.lang.Object java.lang.Object",
+                    "method java.lang.Object getClass",
+                    "method java.lang.Class getName",
                     "method java.util.Map$Entry getKey",
                     "method java.util.Map$Entry getValue"
             ));
